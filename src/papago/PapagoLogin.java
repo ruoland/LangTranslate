@@ -1,5 +1,6 @@
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
+package papago;
+
+import swing.MainNew;
 
 import javax.swing.*;
 import java.awt.*;
@@ -17,7 +18,7 @@ public class PapagoLogin extends JFrame implements ActionListener {
     File papagoFile = new File("./papago");
     Properties properties = new Properties();
 
-    PapagoLogin() throws Exception {
+    public PapagoLogin() throws Exception {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(400, 200);
         setLocationRelativeTo(null);
@@ -41,7 +42,7 @@ public class PapagoLogin extends JFrame implements ActionListener {
             dispose();
             PapagoAPI.clientId = (String) properties.get("papagoID");
             PapagoAPI.clientSecret = (String) properties.get("papagoSecret");
-            new Main();
+            new MainNew();
         }
     }
 
@@ -57,7 +58,7 @@ public class PapagoLogin extends JFrame implements ActionListener {
                     properties.setProperty("papagoID", PapagoAPI.clientId);
                     properties.setProperty("papagoSecret", PapagoAPI.clientSecret);
                     properties.store(new FileWriter(papagoFile), "");
-                    new Main();
+                    new MainNew();
                 }
             }
         } catch (IOException e1) {
