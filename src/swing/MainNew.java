@@ -1,5 +1,6 @@
 package swing;
 
+import jdk.nashorn.internal.scripts.JO;
 import papago.PapagoAPI;
 import papago.PapagoLogin;
 
@@ -9,7 +10,9 @@ import javax.swing.event.ListSelectionListener;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
 import java.util.List;
@@ -20,15 +23,16 @@ public class MainNew extends JFrame implements ActionListener, ListSelectionList
     private static int selectTextLength = 0;
     private static JList<String> modFileJList;
     private static JList<String> langReadJList;
-    private static JButton translateButton;
+    private static JButton translateButton, translateAllButton;
     private static JScrollPane langReadJListScoll;
     private static JMenuBar jMenuBar;
     private static JMenu jMenu;
-    private static JMenuItem jMenuItemOri;
+    private static JMenuItem jMenuItemOri, jMenuItemRP;
     public static boolean addOriginal = true;
-    public static String MC_FOLDER = (System.getenv("APPDATA") + "/.minecraft");
+    public static final String MC_FOLDER = (System.getenv("APPDATA") + "/.minecraft");
 
     public MainNew() {
+
         new MinecraftJar().loadMC();
         setSize(600, 300);
         setLocationRelativeTo(null);
@@ -49,12 +53,14 @@ public class MainNew extends JFrame implements ActionListener, ListSelectionList
                 }
             }
         });
-
+        jMenuItemRP = new JMenuItem("리소스팩 만들기");
+        jMenuItemRP.addActionListener(this);
         jMenu.add(jMenuItemOri);
+        jMenu.add(jMenuItemRP);
         jMenuBar.add(jMenu);
         setJMenuBar(jMenuBar);
         JPanel panel = new JPanel();
-
+        JPanel buttonPanel = new JPanel();
         modFileJList = new JList<String>();
         modFileJList.addListSelectionListener(this);
         JScrollPane modFileJListScroll = new JScrollPane(modFileJList);
@@ -62,29 +68,39 @@ public class MainNew extends JFrame implements ActionListener, ListSelectionList
 
         langReadJList = new JList<String>();
         langReadJList.addListSelectionListener(this);
+        langReadJList.setPrototypeCellValue("XXXXXXXXXXXXXXXXXXXX");
         langReadJListScoll = new JScrollPane(langReadJList);
-        langReadJListScoll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS);
-        panel.add(langReadJListScoll);
+
         add(panel);
+        add(langReadJListScoll);
 
-        translateButton = new JButton("선택한 문장만 번역");
+        translateButton = new JButton("선택한 것만 번역");
         translateButton.addActionListener(this);
-        add(translateButton);
+        buttonPanel.add(translateButton);
 
+        translateAllButton = new JButton("모두 번역");
+        translateAllButton.addActionListener(this);
+        buttonPanel.add(translateAllButton);
+        add(buttonPanel);
         setVisible(true);
+        try {
+            fileLoad(new File(MC_FOLDER + "/mods"));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     public static void main(String[] args) {
         try {
             new PapagoLogin();
-            fileLoad();
+
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    public static void fileLoad() throws IOException {
-        File modFolder = new File(MC_FOLDER + "/mods");
+    public static void fileLoad(File modFolder) throws IOException {
+
         Vector<String> modFileList = new Vector<>();
 
         for (File jarFile : modFolder.listFiles()) {
@@ -96,27 +112,53 @@ public class MainNew extends JFrame implements ActionListener, ListSelectionList
         modFileJList.setListData(modFileList);
     }
 
-    public static int MAX_LENGTH = 1000;
+    public static int MAX_LENGTH = 10000;
+
     @Override
     public void actionPerformed(ActionEvent e) {
         try {
+            if (e.getSource() == jMenuItemRP) {
+                ZipUtil.compress(this);
+            }
+            if (e.getSource() == translateAllButton) {
+                updateSelectTextLength(true);
+
+                if (selectTextLength > 0) {
+                    if (showCheckMessage() == JOptionPane.YES_OPTION) {
+                        Properties enProperties = getSelectModLang().getEnProperties();
+                        Properties koProperties = getSelectModLang().getKoProperties();
+                        for (Object obj : enProperties.keySet()) {
+                            String key = (String) obj;
+                            if (!getSelectModLang().isTranslate(key)) {
+                                String translate = PapagoAPI.main(this, enProperties.getProperty(key));
+                                if (translate == null)
+                                    break;
+                                koProperties.put(key, translate);
+                                System.out.println(key + " - " + enProperties.getProperty(key) + " - " + koProperties.getProperty(key));
+                            }
+                        }
+                        langReadJList.clearSelection();
+                        getSelectModLang().propertiesSave();
+                        openFile(this);
+                    }
+                }
+            }
             if (e.getSource() == translateButton) {
                 if (selectTextLength > 0) {
-                    String checkMessage = selectTextLength > MAX_LENGTH ? "파파고는 하루에 만글자까지만 번역할 수 있습니다. 할 수 있는 것만 할까요? 현재 글자 수:" + selectTextLength : "번역할 글자 수는 " + selectTextLength + "자입니다. 번역할까요?(이미 번역된 문장 제외)";
-                    int option = JOptionPane.showConfirmDialog(this, checkMessage, "번역", JOptionPane.YES_NO_OPTION);
-
-                    if (option == JOptionPane.YES_OPTION) {
+                    if (showCheckMessage() == JOptionPane.YES_OPTION) {
                         List<String> selectText = langReadJList.getSelectedValuesList();
-                        Properties properties = getSelectModLang().getKoProperties();
+                        Properties koProperties = getSelectModLang().getKoProperties();
                         int translateLength = 0;
                         for (int i = 0; i < selectText.size(); i++) {
                             translateLength += selectText.size();
                             if (translateLength < MAX_LENGTH) {
                                 String key = getSelectModLang().findValueKey(selectText.get(i));
-                                System.out.println(key + " - " + selectText.get(i) + " - "+properties.getProperty(key));
-                                if (selectText.get(i).equalsIgnoreCase(properties.getProperty(key))) {
+                                if (selectText.get(i).equalsIgnoreCase(koProperties.getProperty(key))) {
                                     String translate = PapagoAPI.main(this, selectText.get(i));
-                                    properties.put(key, translate);
+                                    if (translate == null)
+                                        break;
+                                    koProperties.put(key, translate);
+                                    System.out.println(key + " - " + selectText.get(i) + " - " + koProperties.getProperty(key));
                                 }
                             } else
                                 break;
@@ -130,31 +172,42 @@ public class MainNew extends JFrame implements ActionListener, ListSelectionList
         } catch (IOException e1) {
             e1.printStackTrace();
         }
-
     }
 
-    public static void openFile(Component component) {
-        int i = JOptionPane.showConfirmDialog(component, "번역이 끝났습니다. 파일을 열까요?", "번역", JOptionPane.YES_NO_OPTION);
-        if (i == JOptionPane.YES_OPTION) {
-            try {
-                File file = new File(MC_FOLDER+"/resourcepacks/local/assets/" + getSelectModLang().getModID() + "/lang/ko_KR.lang");
-                if (System.getProperty("os.name").toLowerCase().contains("windows")) {
-                    String cmd = "rundll32 url.dll,FileProtocolHandler " + file.getCanonicalPath();// 메모장 열기 위한 코드
-                    Runtime.getRuntime().exec(cmd);
-                } else {
-                    Desktop.getDesktop().edit(file);
-                }
-            } catch (IOException e1) {
-                e1.printStackTrace();
+    public void updateSelectTextLength(boolean all) {
+        ModLang modLang = getSelectModLang();
+        selectTextLength = 0;
+        Iterable iterable = all ? modLang.getEnProperties().keySet() : langReadJList.getSelectedValuesList();
+
+        for (Object obj : iterable) {
+            String key = all ? (String) obj : getSelectModLang().findValueKey((String) obj);
+            String engText = modLang.getEnProperties().getProperty(key);
+            System.out.println("key "+key + " - "+engText + " - "+modLang.isTranslate(key));
+            if (!modLang.isTranslate(key)) {
+                selectTextLength += engText.length();
             }
         }
     }
 
-    public static String getSelectFileName() {
+    public int showCheckMessage() {
+        String warningMessage = "파파고는 하루에 만글자까지만 번역할 수 있습니다. 할 수 있는 것만 할까요? 현재 글자 수:" + selectTextLength;
+        String translateMessage = "번역할 글자 수는 " + selectTextLength + "자입니다. 번역할까요?(이미 번역된 문장 제외)";
+        int option = JOptionPane.showConfirmDialog(this, selectTextLength > MAX_LENGTH ? warningMessage : translateMessage, "번역", JOptionPane.YES_NO_OPTION);
+        return option;
+    }
+
+    public void openFile(Component component) {
+        int i = JOptionPane.showConfirmDialog(component, "번역이 끝났습니다. 리소스팩을 만들까요? (만들어진 리소스팩은 마인크래프트 폴더 \\resourcepacks에 저장됩니다)", "번역", JOptionPane.YES_NO_OPTION);
+        if (i == JOptionPane.YES_OPTION) {
+            ZipUtil.compress(component);
+        }
+    }
+
+    public String getSelectFileName() {
         return modFileJList.getSelectedValue();
     }
 
-    public static ModLang getSelectModLang() {
+    public ModLang getSelectModLang() {
         return ModLangMap.get(getSelectFileName());
     }
 
@@ -166,16 +219,7 @@ public class MainNew extends JFrame implements ActionListener, ListSelectionList
             langReadJList.setListData(properties.values().toArray(str));
         }
         if (e.getSource() == langReadJList) {
-            selectTextLength = 0;
-            setTitle("번역할 글자 수 : " + selectTextLength);
-
-            ModLang modLang = getSelectModLang();
-            for (String str : langReadJList.getSelectedValuesList()) {
-                if (modLang.isTranslate(modLang.findValueKey(str))) {
-                    selectTextLength += str.length();
-                    setTitle("번역할 글자 수 : " + selectTextLength);
-                }
-            }
+            updateSelectTextLength(false);
         }
     }
 }

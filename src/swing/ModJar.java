@@ -29,6 +29,7 @@ public class ModJar {
         while ((zipEntry = jarInputStream.getNextEntry()) != null) {
             if (zipEntry.getName().endsWith(language) || zipEntry.getName().endsWith(language.toLowerCase())) {
                 InputStream stream = new JarFile(jarFile).getInputStream(zipEntry);
+                modID = zipEntry.getName().substring(7, zipEntry.getName().indexOf("/lang/"));
                 return (stream);
             }
         }
@@ -42,7 +43,7 @@ public class ModJar {
         System.out.println(modID);
         language = language+".lang";
 
-        File langFile = new File("./assets/" + modID + "/lang/" + language);
+        File langFile = new File("./번역/assets/" + modID + "/lang/" + language);
         if (langFile.isFile())
             return new FileInputStream(langFile);
         else
@@ -51,16 +52,6 @@ public class ModJar {
 
 
     public String getModID() throws IOException {
-        JarInputStream jarInputStream = new JarInputStream(new FileInputStream(jarFile));
-        JarFile j = new JarFile(jarFile);
-        ZipEntry zipEntry;
-        while ((zipEntry = jarInputStream.getNextEntry()) != null) {
-            if (zipEntry.getName().contains("mcmod.info")) {
-                InputStreamReader stream = new InputStreamReader(j.getInputStream(zipEntry));
-                JsonElement element = JsonParser.parseReader(stream);
-                return modID = (element.getAsJsonArray().get(0).getAsJsonObject().get("modid").getAsString());
-            }
-        }
-        throw new IOException();
+        return modID;
     }
 }
