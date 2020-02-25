@@ -1,8 +1,8 @@
 package swing;
 
-import java.io.BufferedWriter;
+import ruo.io.FileUtil;
+
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -24,12 +24,14 @@ public class ModLangMap {
     public static Set<String> getFileList(){
         return modLangMap.keySet();
     }
+
     public static ModLang createModLang(File file) throws IOException {
         ModLang modLang = new ModLang(file);;
         put(file.getName(), modLang);
         put(modLang.getModID(), modLang);
         createLangProperties(modLang.getModID());
-        createMeta(new File("./번역", "pack.mcmeta"));
+        modLang.setResourceCreate( FileUtil.createResourcePack("번역 리소스팩", 3, " 번역 리소스팩입니다") );
+        modLang.propertiesSave();
         return modLang;
     }
 
@@ -38,33 +40,9 @@ public class ModLangMap {
             Path path = Files.createDirectories(Paths.get("./번역/assets/" + modid + "/lang"));
             File langFile = new File(path.toString(), "ko_kr.lang");
             langFile.createNewFile();
-
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    private static void createMeta(File mcmeta) {
-        if (!mcmeta.isFile()) {
-            try {
-                mcmeta.createNewFile();
-                BufferedWriter writer = new BufferedWriter(new FileWriter(mcmeta));
-                writer.write("{");
-                writer.newLine();
-                writer.write("  \"pack\": {");
-                writer.newLine();
-                writer.write("    \"pack_format\": 3,");
-                writer.newLine();
-                writer.write("    \"description\": \"모드 아이템이 번역된 리소스팩입니다\"");
-                writer.newLine();
-                writer.write("  }");
-                writer.newLine();
-                writer.write("}");
-                writer.flush();
-                writer.close();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-    }
 }

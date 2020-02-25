@@ -2,6 +2,7 @@ package papago;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import swing.MainNew;
 
 import javax.swing.*;
 import java.io.BufferedReader;
@@ -18,13 +19,15 @@ public class PapagoAPI {
 
     public static String main(JFrame jFrame, String argText){
         try {
+            argText = MainNew.MC_LANG.translateMCText(argText);
+            System.out.println(argText);
             String text = URLEncoder.encode(argText, "UTF-8");
             HttpURLConnection con = (HttpURLConnection)new URL("https://openapi.naver.com/v1/papago/n2mt").openConnection();
             con.setRequestMethod("POST");
             con.setRequestProperty("X-Naver-Client-Id", clientId);
             con.setRequestProperty("X-Naver-Client-Secret", clientSecret);
             // post request
-            String postParams = "source=" + source + "&target=" + target + "&text="+argText;
+            String postParams = "source=" + source + "&target=" + target + "&text="+text;
             con.setDoOutput(true);
             DataOutputStream wr = new DataOutputStream(con.getOutputStream());
             wr.writeBytes(postParams);
@@ -52,7 +55,7 @@ public class PapagoAPI {
             br.close();
             return  jsonObject.get("message").getAsJsonObject().get("result").getAsJsonObject().get("translatedText").getAsString();
         } catch (Exception e) {
-            System.out.println(e);
+            e.printStackTrace();
         }
         return argText;
     }

@@ -15,7 +15,6 @@ public class ModJar {
     ModJar(File jarFile) throws IOException {
         this.jarFile = jarFile;
         modID = getModID();
-
     }
 
     /**
@@ -40,10 +39,10 @@ public class ModJar {
      * 번역한 파일이 있는지 찾음
      */
     public InputStream findTranslateLangFile(String language) throws IOException {
-        System.out.println(modID);
         language = language+".lang";
 
         File langFile = new File("./번역/assets/" + modID + "/lang/" + language);
+        System.out.println(langFile.isFile());
         if (langFile.isFile())
             return new FileInputStream(langFile);
         else

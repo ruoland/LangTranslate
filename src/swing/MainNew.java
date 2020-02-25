@@ -1,8 +1,9 @@
 package swing;
 
-import jdk.nashorn.internal.scripts.JO;
 import papago.PapagoAPI;
 import papago.PapagoLogin;
+import ruo.io.EnumMCFolder;
+import ruo.io.FileUtil;
 
 import javax.swing.*;
 import javax.swing.event.ListSelectionEvent;
@@ -10,9 +11,7 @@ import javax.swing.event.ListSelectionListener;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
 import java.util.List;
@@ -27,13 +26,12 @@ public class MainNew extends JFrame implements ActionListener, ListSelectionList
     private static JScrollPane langReadJListScoll;
     private static JMenuBar jMenuBar;
     private static JMenu jMenu;
-    private static JMenuItem jMenuItemOri, jMenuItemRP;
-    public static boolean addOriginal = true;
-    public static final String MC_FOLDER = (System.getenv("APPDATA") + "/.minecraft");
-
+    private static JMenuItem jMenuItemOri, jMenuItemRP,jMenuItemRPOpen;
+    public static final MinecraftJar MC_LANG = new MinecraftJar();
     public MainNew() {
 
-        new MinecraftJar().loadMC();
+        MC_LANG.loadMCProperties();
+
         setSize(600, 300);
         setLocationRelativeTo(null);
         setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
@@ -41,22 +39,25 @@ public class MainNew extends JFrame implements ActionListener, ListSelectionList
         jMenuBar = new JMenuBar();
         jMenu = new JMenu("설정");
         jMenuItemOri = new JMenuItem("원래 내용도 같이 넣기 : O");
-        jMenuItemOri.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                if (jMenuItemOri.getText().equals("원래 내용도 같이 넣기 : O")) {
-                    jMenuItemOri.setText("원래 내용도 같이 넣기 : X");
-                    addOriginal = false;
-                } else {
-                    jMenuItemOri.setText("원래 내용도 같이 넣기 : O");
-                    addOriginal = true;
-                }
-            }
-        });
+//        jMenuItemOri.addActionListener(new ActionListener() {
+//            @Override
+//            public void actionPerformed(ActionEvent e) {
+//                if (jMenuItemOri.getText().equals("원래 내용도 같이 넣기 : O")) {
+//                    jMenuItemOri.setText("원래 내용도 같이 넣기 : X");
+//                    addOriginal = false;
+//                } else {
+//                    jMenuItemOri.setText("원래 내용도 같이 넣기 : O");
+//                    addOriginal = true;
+//                }
+//            }
+//        });
         jMenuItemRP = new JMenuItem("리소스팩 만들기");
         jMenuItemRP.addActionListener(this);
-        jMenu.add(jMenuItemOri);
+        jMenuItemRPOpen = new JMenuItem("리소스팩 폴더 열기");
+        jMenuItemRPOpen.addActionListener(this);
+//        jMenu.add(jMenuItemOri);
         jMenu.add(jMenuItemRP);
+        jMenu.add(jMenuItemRPOpen);
         jMenuBar.add(jMenu);
         setJMenuBar(jMenuBar);
         JPanel panel = new JPanel();
@@ -84,7 +85,7 @@ public class MainNew extends JFrame implements ActionListener, ListSelectionList
         add(buttonPanel);
         setVisible(true);
         try {
-            fileLoad(new File(MC_FOLDER + "/mods"));
+            fileLoad(new File(FileUtil.getMinecraftFolder(EnumMCFolder.MODS)));
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -100,9 +101,7 @@ public class MainNew extends JFrame implements ActionListener, ListSelectionList
     }
 
     public static void fileLoad(File modFolder) throws IOException {
-
         Vector<String> modFileList = new Vector<>();
-
         for (File jarFile : modFolder.listFiles()) {
             if (jarFile.isFile()) {
                 ModLangMap.createModLang(jarFile);
@@ -117,8 +116,11 @@ public class MainNew extends JFrame implements ActionListener, ListSelectionList
     @Override
     public void actionPerformed(ActionEvent e) {
         try {
+            if(e.getSource() == jMenuItemRPOpen){
+                FileUtil.openFolder(new File(FileUtil.getMinecraftFolder(EnumMCFolder.RP)));
+            }
             if (e.getSource() == jMenuItemRP) {
-                ZipUtil.compress(this);
+                showResourcePackDialog(this);
             }
             if (e.getSource() == translateAllButton) {
                 updateSelectTextLength(true);
@@ -139,7 +141,7 @@ public class MainNew extends JFrame implements ActionListener, ListSelectionList
                         }
                         langReadJList.clearSelection();
                         getSelectModLang().propertiesSave();
-                        openFile(this);
+                        showResourcePackDialog(this);
                     }
                 }
             }
@@ -165,7 +167,7 @@ public class MainNew extends JFrame implements ActionListener, ListSelectionList
                         }
                         langReadJList.clearSelection();
                         getSelectModLang().propertiesSave();
-                        openFile(this);
+                        showResourcePackDialog(this);
                     }
                 }
             }
@@ -196,10 +198,10 @@ public class MainNew extends JFrame implements ActionListener, ListSelectionList
         return option;
     }
 
-    public void openFile(Component component) {
+    public void showResourcePackDialog(Component component) throws IOException {
         int i = JOptionPane.showConfirmDialog(component, "번역이 끝났습니다. 리소스팩을 만들까요? (만들어진 리소스팩은 마인크래프트 폴더 \\resourcepacks에 저장됩니다)", "번역", JOptionPane.YES_NO_OPTION);
         if (i == JOptionPane.YES_OPTION) {
-            ZipUtil.compress(component);
+            FileUtil.copyFolder("./번역", FileUtil.getMinecraftFolder(EnumMCFolder.RP, "번역 리소스팩"));
         }
     }
 
